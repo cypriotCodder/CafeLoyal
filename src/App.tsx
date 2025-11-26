@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 import LoginPage from './components/loginPage';
 import SignUpPage from './components/SignUpPage';
 import Dashboard from './components/Dashboard';
@@ -8,13 +9,41 @@ import type { User } from './types';
 function App() {
   const [user, setUser] = useState<User | null>(null);
 
-  // Optional: restore user from localStorage so refresh doesn't log you out
+  // Restore user from localStorage
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
   }, []);
+
+  // Realtime Subscription
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          const updatedUser = { ...user, ...payload.new } as User;
+          setUser(updatedUser);
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]); // Re-subscribe if user ID changes
 
   function handleLogin(userData: User) {
     setUser(userData);
