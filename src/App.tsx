@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LoginPage from './components/loginPage';
+import SignUpPage from './components/SignUpPage';
 import Dashboard from './components/Dashboard';
 import type { User } from './types';
 
@@ -26,7 +28,14 @@ function App() {
 
 
   if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <Router>
+        <Routes>
+          <Route path="/signUpPage" element={<SignUpPage />} />
+          <Route path="*" element={<LoginPage onLogin={handleLogin} />} />
+        </Routes>
+      </Router>
+    );
   }
 
   return <Dashboard user={user} onLogout={handleLogout} />;

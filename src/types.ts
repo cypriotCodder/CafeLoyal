@@ -2,4 +2,7 @@ export interface User {
     id: string;
     name: string;
     email: string;
+    points: number;
+    transactions?: any[];
+    role: 'admin' | 'worker' | 'user';
 }

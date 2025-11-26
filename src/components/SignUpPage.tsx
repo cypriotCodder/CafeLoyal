@@ -1,26 +1,24 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Link } from 'react-router-dom';
-import type { User } from '../types';
+import { Link, useNavigate } from 'react-router-dom';
 
-interface LoginPageProps {
-    onLogin: (user: User) => void;
-}
-
-function LoginPage({ onLogin }: LoginPageProps) {
+function SignUpPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');
+    const [role, setRole] = useState<'user' | 'worker' | 'admin'>('user');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
 
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleSignUp = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
 
         try {
-            // 1. Sign in
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            // 1. Sign up with Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signUp({
                 email,
                 password,
             });
@@ -28,27 +26,26 @@ function LoginPage({ onLogin }: LoginPageProps) {
             if (authError) throw authError;
 
             if (authData.user) {
-                // 2. Fetch Profile
-                const { data: profile, error: profileError } = await supabase
+                // 2. Create Profile
+                const { error: profileError } = await supabase
                     .from('profiles')
-                    .select('*')
-                    .eq('id', authData.user.id)
-                    .single();
+                    .insert([
+                        {
+                            id: authData.user.id,
+                            name: name,
+                            email: email,
+                            role: role,
+                            points: 0
+                        }
+                    ]);
 
                 if (profileError) throw profileError;
 
-                // 3. Update App State
-                const user: User = {
-                    id: profile.id,
-                    name: profile.name || 'User',
-                    email: profile.email || email,
-                    points: profile.points || 0,
-                    role: profile.role || 'user'
-                };
-                onLogin(user);
+                // Success
+                navigate('/login');
             }
         } catch (err: any) {
-            setError(err.message || 'Failed to login');
+            setError(err.message || 'Failed to sign up');
         } finally {
             setLoading(false);
         }
@@ -58,8 +55,8 @@ function LoginPage({ onLogin }: LoginPageProps) {
         <div className="flex flex-col justify-center items-center h-screen bg-gray-50">
             <div className="bg-white p-10 rounded-xl shadow-lg w-full max-w-md border border-gray-100">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-                    <p className="text-gray-500 mt-2">Login to access your rewards</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Create Account</h1>
+                    <p className="text-gray-500 mt-2">Join Cafe Loyal today</p>
                 </div>
 
                 {error && (
@@ -68,7 +65,19 @@ function LoginPage({ onLogin }: LoginPageProps) {
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                <form onSubmit={handleSignUp} className="flex flex-col gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all"
+                            placeholder="John Doe"
+                        />
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                         <input
@@ -93,19 +102,32 @@ function LoginPage({ onLogin }: LoginPageProps) {
                         />
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Role (Demo Only)</label>
+                        <select
+                            value={role}
+                            onChange={(e) => setRole(e.target.value as 'user' | 'worker' | 'admin')}
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent outline-none transition-all bg-white"
+                        >
+                            <option value="user">Customer</option>
+                            <option value="worker">Worker</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
                     <button
                         type="submit"
                         disabled={loading}
                         className="w-full mt-2 bg-black text-white py-3 rounded-lg font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        {loading ? 'Logging in...' : 'Login'}
+                        {loading ? 'Creating Account...' : 'Sign Up'}
                     </button>
                 </form>
 
                 <div className="mt-6 text-center text-sm text-gray-600">
-                    Don't have an account?{' '}
-                    <Link to="/signUpPage" className="font-semibold text-black hover:underline">
-                        Sign up
+                    Already have an account?{' '}
+                    <Link to="/login" className="font-semibold text-black hover:underline">
+                        Log in
                     </Link>
                 </div>
             </div>
@@ -113,5 +135,4 @@ function LoginPage({ onLogin }: LoginPageProps) {
     );
 }
 
-
-export default LoginPage;
+export default SignUpPage;
